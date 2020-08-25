@@ -1,9 +1,23 @@
-[profile.release]
-panic = 'unwind'
+[[bin]]
+name = "shiftNrg"
+path = "src/main.rs"
+
+[package]
+name = "shiftNrg"
+version = "0.1.0"
+authors = ["Shift Community Project <scp@shiftnrg.org>"]
+edition = "2018"
+
+[dependencies]
+cli = { package = "shiftNrg-cli", path = "cli" }
 
 [workspace]
 members = [
+    'cli',
     'node',
-    'pallets/template',
     'runtime',
 ]
+
+
+[profile.release]
+panic = 'unwind'

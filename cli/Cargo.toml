@@ -1,9 +1,9 @@
 [package]
 name = "shiftNrg-cli"
-version = "0.0.1"
-authors = ["Shift Community Project <scp@shiftnrg.org>"]
+version = "0.1.0"
+authors = ["Pactum IO <pact@pactum.io>"]
 description = "ShiftNrg Client Node"
-edition = "2018"
+edition = "2020"
 license = "GPL-3.0"
 homepage = "https://shiftnrg.org"
 build = "build.rs"

@@ -42,7 +42,7 @@ impl SubstrateCli for Cli {
 			["mainnet", "testnet", "devnet"].iter()
 				.cloned()
 				.find(|&chain| n.starts_with(chain))
-				.unwrap_or("polkadot")
+				.unwrap_or("mainnet")
 		} else { id };
 		Ok(match id {
 			"shiftNrg-dev" | "dev" => Box::new(service::chain_spec::polkadot_development_config()?),
@@ -69,13 +69,12 @@ impl SubstrateCli for Cli {
 	}
 
 	fn native_runtime_version(spec: &Box<dyn service::ChainSpec>) -> &'static RuntimeVersion {
-		if spec.is_shiftNrg() {
-			&service::shiftNrg_runtime::VERSION
-		} else if spec.is_shiftNrgTn() {
-			// &service::shiftNrgTn_runtime::VERSION
-			unimplemented!()
+		if spec.is_mainnet() {
+			&service::mainnet_runtime::VERSION
+		} else if spec.is_testnet() {
+			&service::testnet_runtime::VERSION
 		} else {
-			unreachable!()
+			&service::devnet_runtime::VERSION
 		}
 	}
 }
@@ -85,15 +84,7 @@ pub fn run() -> Result<()> {
 	let cli = Cli::from_args();
 
 	fn set_default_ss58_version(spec: &Box<dyn service::ChainSpec>) {
-		use sp_core::crypto::Ss58AddressFormat;
-
-		let ss58_version = if spec.is_kusama() {
-			Ss58AddressFormat::KusamaAccount
-		} else if spec.is_westend() {
-			Ss58AddressFormat::SubstrateAccount
-		} else {
-			Ss58AddressFormat::PolkadotAccount
-		};
+		let ss58_version = Ss58AddressFormat::Shift
 
 		sp_core::crypto::set_default_ss58_version(ss58_version);
 	};
@@ -112,13 +103,17 @@ pub fn run() -> Result<()> {
 				Some((cli.run.grandpa_pause[0], cli.run.grandpa_pause[1]))
 			};
 
-			if chain_spec.is_kusama() {
-				info!("----------------------------");
-				info!("This chain is not in any way");
-				info!("      endorsed by the       ");
-				info!("     KUSAMA FOUNDATION      ");
-				info!("----------------------------");
-			}
+			info!(" ____            _                     ___ ___  ");
+			info!("|  _ \ __ _  ___| |_ _   _ _ __ ___   |_ _/ _ \ ");
+			info!("| |_) / _` |/ __| __| | | | '_ ` _ \   | | | | |");
+			info!("|  __/ (_| | (__| |_| |_| | | | | | |  | | |_| |");
+			info!("|_|   \__,_|\___|\__|\__,_|_| |_| |_| |___\___/ ");
+			info!("	    ____  _     _  __ _   _   _              ");
+			info!("	   / ___|| |__ (_)/ _| |_| \ | |_ __ __ _    ");
+			info!("	   \___ \| '_ \| | |_| __|  \| | '__/ _` |   ");
+			info!("	    ___) | | | | |  _| |_| |\  | | | (_| |   ");
+			info!("	   |____/|_| |_|_|_|  \__|_| \_|_|  \__, |   ");
+			info!("   		  						    |___/    ");
 
 			runner.run_node_until_exit(|config| {
 				let role = config.role.clone();
@@ -140,58 +135,27 @@ pub fn run() -> Result<()> {
 
 			set_default_ss58_version(chain_spec);
 
-			if chain_spec.is_kusama() {
+			if chain_spec.is_devnet() {
 				runner.run_subcommand(subcommand, |config|
 					service::new_chain_ops::<
-						service::kusama_runtime::RuntimeApi,
-						service::KusamaExecutor,
+						service::devnet_runtime::RuntimeApi,
+						service::ShiftNrgDevnetExecutor,
 					>(config)
 				)
-			} else if chain_spec.is_westend() {
+			} else if chain_spec.is_testnet() {
 				runner.run_subcommand(subcommand, |config|
 					service::new_chain_ops::<
-						service::westend_runtime::RuntimeApi,
-						service::WestendExecutor,
+						service::testnet_runtime::RuntimeApi,
+						service::ShiftNrgTestnetExecutor,
 					>(config)
 				)
-			} else {
+			} else { 
 				runner.run_subcommand(subcommand, |config|
 					service::new_chain_ops::<
-						service::polkadot_runtime::RuntimeApi,
-						service::PolkadotExecutor,
+						service::mainnet_runtime::RuntimeApi,
+						service::ShiftNrgExecutor,
 					>(config)
 				)
-			}
-		},
-		Some(Subcommand::ValidationWorker(cmd)) => {
-			sc_cli::init_logger("");
-
-			if cfg!(feature = "browser") {
-				Err(sc_cli::Error::Input("Cannot run validation worker in browser".into()))
-			} else {
-				#[cfg(all(not(feature = "browser"), not(feature = "service-rewr")))]
-				service::run_validation_worker(&cmd.mem_id)?;
-				Ok(())
-			}
-		},
-		Some(Subcommand::Benchmark(cmd)) => {
-			let runner = cli.create_runner(cmd)?;
-			let chain_spec = &runner.config().chain_spec;
-
-			set_default_ss58_version(chain_spec);
-
-			if chain_spec.is_kusama() {
-				runner.sync_run(|config| {
-					cmd.run::<service::kusama_runtime::Block, service::KusamaExecutor>(config)
-				})
-			} else if chain_spec.is_westend() {
-				runner.sync_run(|config| {
-					cmd.run::<service::westend_runtime::Block, service::WestendExecutor>(config)
-				})
-			} else {
-				runner.sync_run(|config| {
-					cmd.run::<service::polkadot_runtime::Block, service::PolkadotExecutor>(config)
-				})
 			}
 		},
 	}
